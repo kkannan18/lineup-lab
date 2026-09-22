@@ -210,7 +210,7 @@ def effective_starter_counts(all_teams, metrics, slots):
     }
 
 async def make_feed(get_json, season, week):
-    prior = list(range(max(1, week - 4), week))
+    prior = list(range(max(1, week - 2), week))
     calls = [
         get_json(f"{SLEEPER}/v1/players/nfl", ttl=3600),
         get_json(f"{SLEEPER}/projections/nfl/{season}/{week}?season_type=regular", ttl=300),
@@ -323,10 +323,13 @@ def metric_set(feed, settings):
         return feed["metric_sets"][cache_key]
     raw = {}
     defense_allowed = defaultdict(list)
+    allowed_by_key = {}
     for (opp, pos), games in feed["defense"].items():
         values = [fantasy_points(g, settings) for g in games]
         if values:
-            defense_allowed[pos].append(sum(values) / feed["prior_count"])
+            average = sum(values) / feed["prior_count"]
+            allowed_by_key[(opp, pos)] = average
+            defense_allowed[pos].append(average)
     for pid, pr in feed["projection"].items():
         meta = feed["players"].get(pid) or {}
         pos = meta.get("position") or ((meta.get("fantasy_positions") or [""])[0])
@@ -338,10 +341,7 @@ def metric_set(feed, settings):
         recent = sum(fantasy_points(g, settings) for g in games) / feed["prior_count"]
         involved = sum(usage(g, pos) for g in games) / feed["prior_count"]
         opp = pr.get("opponent")
-        dgames = feed["defense"].get((opp, pos), [])
-        allowed = None
-        if dgames:
-            allowed = sum(fantasy_points(g, settings) for g in dgames) / feed["prior_count"]
+        allowed = allowed_by_key.get((opp, pos))
         raw[pid] = {
             "id": pid, "name": meta.get("full_name") or pid, "position": pos,
             **consistency_metrics(feed, pid, pos, settings),
