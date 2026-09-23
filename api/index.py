@@ -26,6 +26,17 @@ app = FastAPI(
 _cache: dict[str, tuple[float, Any]] = {}
 MAX_CACHE_ENTRIES = 96
 
+# Pre-seed cache with bundled player snapshot to avoid cold-start download
+try:
+    import json as _json, pathlib as _pathlib, time as _time
+    _snap = _pathlib.Path(__file__).parent / "players.json"
+    if _snap.exists():
+        _players = _json.loads(_snap.read_text())
+        _SLEEPER = "https://api.sleeper.app"
+        _cache[f"{_SLEEPER}/v1/players/nfl"] = (_time.time() + 82800, _players)
+except Exception:
+    pass
+
 
 def cache_get(key: str):
     item = _cache.get(key)
