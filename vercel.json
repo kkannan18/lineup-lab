@@ -1,6 +1,7 @@
 {
   "version": 2,
   "buildCommand": "python3 build.py",
+  "outputDirectory": "public",
   "functions": {
     "api/index.py": {
       "maxDuration": 60,
