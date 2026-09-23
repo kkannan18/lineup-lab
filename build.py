@@ -42,11 +42,13 @@ print("Fetching players...")
 raw_players = fetch(f"{SLEEPER}/v1/players/nfl")
 if raw_players:
     POSITIONS = {"QB","RB","WR","TE","K","DEF"}
-    KEEP = ("full_name","position","fantasy_positions","team","search_full_name")
+    KEEP = ("full_name","position","fantasy_positions","team","search_full_name","active")
     players = {
         pid: {k: p.get(k) for k in KEEP}
         for pid, p in raw_players.items()
-        if p.get("team") and p.get("position") in POSITIONS
+        if p.get("position") in POSITIONS and (
+            p.get("team") or p.get("active") or int(p.get("years_exp") or 0) <= 6
+        )
     }
     save("players.json", players)
 
