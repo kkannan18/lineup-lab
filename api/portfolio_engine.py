@@ -313,9 +313,13 @@ def consistency_metrics(feed, pid, pos, settings):
     """
     thresholds = {"QB": 30, "RB": 10, "WR": 6, "TE": 5, "K": 5, "DEF": 1}
     samples = []
+    precomp = feed.get("_precomp_pts", {})
     for item in feed.get("history_by_week", {}).get(pid, []):
         stats = item["stats"]
-        points = fantasy_points(stats, settings)
+        week = item.get("week")
+        points = precomp.get((pid, week)) if precomp else fantasy_points(stats, settings)
+        if points is None:
+            points = fantasy_points(stats, settings)
         opportunities = usage(stats, pos)
         hit = points >= 10 or opportunities >= thresholds.get(pos, 10)
         samples.append({
@@ -371,8 +375,13 @@ def metric_set(feed, settings):
             defense_allowed[pos].append(average)
     # Pre-compute fantasy_points for all historical games once
     hist_pts = {}
+    precomp_pts = {}
     for pid, games in feed["hist"].items():
-        hist_pts[pid] = [fantasy_points(g, settings) for g in games]
+        pts = [fantasy_points(g, settings) for g in games]
+        hist_pts[pid] = pts
+        for item, pt in zip(feed["history_by_week"].get(pid, []), pts):
+            precomp_pts[(pid, item.get("week"))] = pt
+    feed["_precomp_pts"] = precomp_pts
 
     # Pre-compute consistency metrics once per player
     _consistency_cache = {}
