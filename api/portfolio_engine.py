@@ -231,7 +231,7 @@ async def make_feed(get_json, season, week):
         projections = raw if isinstance(raw, list) else list(raw.values())
     else:
         # Build-time snapshot is already a trimmed dict keyed by player_id
-        projections = [dict(player_id=pid, **stats) for pid, stats in projections_raw.items()]
+        projections = [{"player_id": pid, "stats": stats} for pid, stats in projections_raw.items()]
 
     # Load stats history from build-time snapshots, fall back to live API
     history = []
