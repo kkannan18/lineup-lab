@@ -373,7 +373,9 @@ def metric_set(feed, settings):
         games = feed["hist"].get(pid, [])
         recent = sum(fantasy_points(g, settings) for g in games) / feed["prior_count"]
         involved = sum(usage(g, pos) for g in games) / feed["prior_count"]
-        opp = pr.get("opponent")
+        team_abbr = (meta.get("team") or "").upper()
+        game_info = feed.get("games_by_team", {}).get(team_abbr, {})
+        opp = game_info.get("opponent") or pr.get("opponent")
         allowed = allowed_by_key.get((opp, pos))
         raw[pid] = {
             "id": pid, "name": meta.get("full_name") or pid, "position": pos,
@@ -381,7 +383,7 @@ def metric_set(feed, settings):
             "team": meta.get("team") or "FA", "opponent": opp or "TBD",
             "projected": projected, "recent": recent, "usage": involved,
             "allowed": allowed, "injury": meta.get("injury_status"),
-            **feed.get("games_by_team", {}).get((meta.get("team") or "").upper(), {})
+            **game_info
         }
     # Injured starters can disappear from a current-week projection feed entirely.
     # Add those unavailable players back as context so their vacated role can boost
