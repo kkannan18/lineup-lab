@@ -369,6 +369,18 @@ def metric_set(feed, settings):
             average = sum(values) / feed["prior_count"]
             allowed_by_key[(opp, pos)] = average
             defense_allowed[pos].append(average)
+    # Pre-compute fantasy_points for all historical games once
+    hist_pts = {}
+    for pid, games in feed["hist"].items():
+        hist_pts[pid] = [fantasy_points(g, settings) for g in games]
+
+    # Pre-compute consistency metrics once per player
+    _consistency_cache = {}
+    def _consistency(pid, pos):
+        if pid not in _consistency_cache:
+            _consistency_cache[pid] = consistency_metrics(feed, pid, pos, settings)
+        return _consistency_cache[pid]
+
     for pid, pr in feed["projection"].items():
         meta = feed["players"].get(pid) or {}
         pos = meta.get("position") or ((meta.get("fantasy_positions") or [""])[0])
@@ -376,8 +388,9 @@ def metric_set(feed, settings):
             continue
         ps = pr.get("stats") or pr
         projected = fantasy_points(ps, settings)
+        pts = hist_pts.get(pid, [])
         games = feed["hist"].get(pid, [])
-        recent = sum(fantasy_points(g, settings) for g in games) / feed["prior_count"]
+        recent = sum(pts) / feed["prior_count"]
         involved = sum(usage(g, pos) for g in games) / feed["prior_count"]
         team_abbr = (meta.get("team") or "").upper()
         game_info = feed.get("games_by_team", {}).get(team_abbr, {})
@@ -385,7 +398,7 @@ def metric_set(feed, settings):
         allowed = allowed_by_key.get((opp, pos))
         raw[pid] = {
             "id": pid, "name": meta.get("full_name") or pid, "position": pos,
-            **consistency_metrics(feed, pid, pos, settings),
+            **_consistency(pid, pos),
             "team": meta.get("team") or "FA", "opponent": opp or "TBD",
             "projected": projected, "recent": recent, "usage": involved,
             "allowed": allowed, "injury": meta.get("injury_status"),
@@ -407,7 +420,8 @@ def metric_set(feed, settings):
         meta = feed["players"].get(pid) or {}
         pos = identity[1]
         games = feed["hist"].get(pid, [])
-        recent = sum(fantasy_points(g, settings) for g in games) / feed["prior_count"]
+        pts = hist_pts.get(pid, [])
+        recent = sum(pts) / feed["prior_count"]
         involved = sum(usage(g, pos) for g in games) / feed["prior_count"]
         team = (report.get("team") or meta.get("team") or "").upper()
         if not team:
@@ -415,7 +429,7 @@ def metric_set(feed, settings):
         raw[pid] = {
             "id": pid, "name": meta.get("full_name") or report.get("name") or pid,
             "position": pos, "team": team, "opponent": "TBD",
-            **consistency_metrics(feed, pid, pos, settings),
+            **_consistency(pid, pos),
             "projected": 0.0, "recent": recent, "usage": involved,
             "allowed": None, "injury": meta.get("injury_status"),
             **feed.get("games_by_team", {}).get(team, {})
