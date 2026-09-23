@@ -342,7 +342,7 @@ def metric_set(feed, settings):
     for pid, pr in feed["projection"].items():
         meta = feed["players"].get(pid) or {}
         pos = meta.get("position") or ((meta.get("fantasy_positions") or [""])[0])
-        if pos not in FANTASY_POS or not meta.get("active") or not meta.get("team"):
+        if pos not in FANTASY_POS or not meta.get("team"):
             continue
         ps = pr.get("stats") or {}
         projected = fantasy_points(ps, settings)
