@@ -211,15 +211,42 @@ def effective_starter_counts(all_teams, metrics, slots):
 
 async def make_feed(get_json, season, week):
     prior = list(range(max(1, week - 2), week))
-    calls = [
-        get_json(f"{SLEEPER}/v1/players/nfl", ttl=3600),
-        get_json(f"{SLEEPER}/projections/nfl/{season}/{week}?season_type=regular", ttl=300),
+    import json as _json, pathlib as _pathlib
+
+    def _load_snapshot(name, fallback_url, ttl=3600):
+        snap = _pathlib.Path(__file__).parent / name
+        if snap.exists():
+            return _json.loads(snap.read_text())
+        return None
+
+    # Load players from build-time snapshot, fall back to live API
+    players = _load_snapshot("players.json", f"{SLEEPER}/v1/players/nfl")
+    if players is None:
+        players = await get_json(f"{SLEEPER}/v1/players/nfl", ttl=3600) or {}
+
+    # Load projections from build-time snapshot, fall back to live API
+    projections_raw = _load_snapshot("projections.json", f"{SLEEPER}/projections/nfl/{season}/{week}?season_type=regular")
+    if projections_raw is None:
+        raw = await get_json(f"{SLEEPER}/projections/nfl/{season}/{week}?season_type=regular", ttl=300) or []
+        projections = raw if isinstance(raw, list) else list(raw.values())
+    else:
+        # Build-time snapshot is already a trimmed dict keyed by player_id
+        projections = [dict(player_id=pid, **stats) for pid, stats in projections_raw.items()]
+
+    # Load stats history from build-time snapshots, fall back to live API
+    history = []
+    for w in prior:
+        snap_data = _load_snapshot(f"stats_{season}_{w}.json", f"{SLEEPER}/stats/nfl/{season}/{w}?season_type=regular")
+        if snap_data is None:
+            snap_data = await get_json(f"{SLEEPER}/stats/nfl/{season}/{w}?season_type=regular", ttl=1800) or {}
+        history.append(snap_data)
+
+    # ESPN injuries and scoreboard still fetched live (small payloads)
+    injury_payload, scoreboard = await asyncio.gather(
         get_json("https://site.api.espn.com/apis/site/v2/sports/football/nfl/injuries", ttl=300),
         get_json(f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={season}&seasontype=2&week={week}&limit=100", ttl=300),
-    ]
-    calls += [get_json(f"{SLEEPER}/stats/nfl/{season}/{w}?season_type=regular", ttl=1800) for w in prior]
-    players, projections, injury_payload, scoreboard, *history = await asyncio.gather(*calls)
-    projection = {str(x.get("player_id")): x for x in projections if x.get("player_id")}
+    )
+    projection = {str(x.get("player_id")): x for x in (projections if isinstance(projections, list) else []) if x.get("player_id")}
     games_by_team = {}
     for event in scoreboard.get("events", []):
         competition = (event.get("competitions") or [{}])[0]
@@ -235,6 +262,7 @@ async def make_feed(get_json, season, week):
     history_by_week = defaultdict(list)
     defense = defaultdict(list)
     for history_week, rows in zip(prior, history):
+        if rows is None: rows = {}
         seen = set()
         for x in rows:
             pid = str(x.get("player_id"))
