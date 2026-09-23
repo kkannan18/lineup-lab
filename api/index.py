@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from dataclasses import dataclass, field
 
 from .portfolio_engine import (
     SLEEPER,
@@ -101,19 +101,22 @@ async def fetch_public_espn(league_id, season, secret, week=None):
     return response.json()
 
 
-class SleeperRequest(BaseModel):
-    username: str = Field(min_length=1, max_length=80)
+@dataclass
+class SleeperRequest:
+    username: str = ""
     season: int | None = None
     week: int | None = None
 
-
-class EspnLeagueRequest(BaseModel):
-    league_id: str = Field(min_length=1, max_length=40)
+@dataclass
+class EspnLeagueRequest:
+    league_id: str = ""
     season: int | None = None
 
-
-class EspnAnalyzeRequest(EspnLeagueRequest):
-    team_id: str = Field(min_length=1, max_length=20)
+@dataclass
+class EspnAnalyzeRequest:
+    league_id: str = ""
+    team_id: str = ""
+    season: int | None = None
     week: int | None = None
 
 
