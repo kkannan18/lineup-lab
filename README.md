@@ -36,3 +36,4 @@ Yahoo OAuth should be added only after the first deployment establishes a stable
 ## Privacy
 
 Requests are processed in server memory. There is no application database. Upstream provider requests and normal hosting logs may still exist according to Sleeper, ESPN, and Vercel policies.
+# lineup lab
