@@ -250,14 +250,20 @@ async def make_feed(get_json, season, week):
     games_by_team = {}
     for event in scoreboard.get("events", []):
         competition = (event.get("competitions") or [{}])[0]
-        for side in competition.get("competitors", []):
-            abbr = ((side.get("team") or {}).get("abbreviation") or "").upper()
-            if abbr:
-                games_by_team[abbr] = {
-                    "kickoff": event.get("date"),
-                    "game": event.get("name"),
-                    "game_status": ((event.get("status") or {}).get("type") or {}).get("state"),
-                }
+        competitors = competition.get("competitors", [])
+        abbrs = [((s.get("team") or {}).get("abbreviation") or "").upper() for s in competitors]
+        status = ((event.get("status") or {}).get("type") or {}).get("state")
+        for i, side in enumerate(competitors):
+            abbr = abbrs[i]
+            if not abbr:
+                continue
+            opp = abbrs[1 - i] if len(abbrs) == 2 else ""
+            games_by_team[abbr] = {
+                "opponent": opp or "TBD",
+                "kickoff": event.get("date"),
+                "game": event.get("name"),
+                "game_status": status,
+            }
     hist = defaultdict(list)
     history_by_week = defaultdict(list)
     defense = defaultdict(list)
