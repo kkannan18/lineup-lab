@@ -264,9 +264,14 @@ async def make_feed(get_json, season, week):
     for history_week, rows in zip(prior, history):
         if rows is None: rows = {}
         seen = set()
-        for x in rows:
+        # snapshot format: {pid: {stat: val}} — convert to iterable of dicts
+        if isinstance(rows, dict):
+            rows_iter = [dict(player_id=pid, **stats) for pid, stats in rows.items()]
+        else:
+            rows_iter = rows or []
+        for x in rows_iter:
             pid = str(x.get("player_id"))
-            st = x.get("stats") or {}
+            st = x.get("stats") or x
             meta = players.get(pid) or {}
             pos = meta.get("position") or ((meta.get("fantasy_positions") or [""])[0])
             hist[pid].append(st)
