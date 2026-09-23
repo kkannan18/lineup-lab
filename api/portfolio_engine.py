@@ -368,7 +368,7 @@ def metric_set(feed, settings):
         pos = meta.get("position") or ((meta.get("fantasy_positions") or [""])[0])
         if pos not in FANTASY_POS:
             continue
-        ps = pr.get("stats") or {}
+        ps = pr.get("stats") or pr
         projected = fantasy_points(ps, settings)
         games = feed["hist"].get(pid, [])
         recent = sum(fantasy_points(g, settings) for g in games) / feed["prior_count"]
