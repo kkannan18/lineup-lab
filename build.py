@@ -93,4 +93,10 @@ for w in range(max(1, week - 2), week):
                 stats_out[pid] = trimmed
         save(f"stats_{season}_{w}.json", stats_out)
 
+# --- ESPN injuries (large payload, cache at build time) ---
+print("Fetching ESPN injuries...")
+espn_injuries = fetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/injuries")
+if espn_injuries:
+    save("injuries.json", espn_injuries)
+
 print(f"\nBuild complete — {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
