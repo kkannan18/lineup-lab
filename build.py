@@ -60,10 +60,13 @@ if raw_proj:
         raw_proj = {str(i): item for i, item in enumerate(raw_proj) if isinstance(item, dict)}
     # Projections are keyed by player_id inside each item
     proj = {}
-    for pid, item in raw_proj.items():
+    items = raw_proj if isinstance(raw_proj, list) else raw_proj.values()
+    for item in items:
         if not isinstance(item, dict):
             continue
-        # Some formats nest stats under a key
+        pid = str(item.get("player_id") or "")
+        if not pid or pid == "None":
+            continue
         stats = item.get("stats") or item
         trimmed = {k: v for k, v in stats.items() if k in PROJ_KEEP}
         if trimmed:
@@ -77,11 +80,15 @@ for w in range(max(1, week - 2), week):
         if isinstance(raw_stats, list):
             raw_stats = {str(i): item for i, item in enumerate(raw_stats) if isinstance(item, dict)}
         stats_out = {}
-        for pid, item in raw_stats.items():
+        items = raw_stats if isinstance(raw_stats, list) else raw_stats.values()
+        for item in items:
             if not isinstance(item, dict):
                 continue
-            s = item.get("stats") or item
-            trimmed = {k: v for k, v in s.items() if k in PROJ_KEEP}
+            pid = str(item.get("player_id") or "")
+            if not pid or pid == "None":
+                continue
+            st = item.get("stats") or item
+            trimmed = {k: v for k, v in st.items() if k in PROJ_KEEP}
             if trimmed:
                 stats_out[pid] = trimmed
         save(f"stats_{season}_{w}.json", stats_out)
