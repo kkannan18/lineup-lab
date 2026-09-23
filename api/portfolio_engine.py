@@ -1,12 +1,3 @@
-import json as _json, pathlib as _pathlib
-
-def _load_players():
-    """Load bundled player snapshot; fall back to live API result if missing."""
-    snap = _pathlib.Path(__file__).parent / "players.json"
-    if snap.exists():
-        return _json.loads(snap.read_text())
-    return {}
-
 import asyncio, hashlib, json, math, re, sqlite3
 from collections import Counter, defaultdict
 
@@ -221,7 +212,7 @@ def effective_starter_counts(all_teams, metrics, slots):
 async def make_feed(get_json, season, week):
     prior = list(range(max(1, week - 2), week))
     calls = [
-        _load_players(),
+        get_json(f"{SLEEPER}/v1/players/nfl", ttl=3600),
         get_json(f"{SLEEPER}/projections/nfl/{season}/{week}?season_type=regular", ttl=300),
         get_json("https://site.api.espn.com/apis/site/v2/sports/football/nfl/injuries", ttl=300),
         get_json(f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={season}&seasontype=2&week={week}&limit=100", ttl=300),
